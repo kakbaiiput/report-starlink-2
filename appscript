@@ -597,11 +597,11 @@ function calculateDailySummaryWithMergeNew11Column(sheet) {
       var rows = rowsByDate[dateString];
       
       if (rows.length > 0) {
-        var formattedTotal = 'Rp ' + dailyTotal.toLocaleString('id-ID');
-        
+        var formattedTotal = 'Rp ' + dailyTotal.toLocaleString('id-ID') + '\n' + rows.length + ' Starlink';
+
         var firstRow = Math.min(...rows);
         var lastRowOfGroup = Math.max(...rows);
-        
+
         // Set value di baris pertama di kolom L
         sheet.getRange(firstRow, 12).setValue(formattedTotal);
 
@@ -619,7 +619,8 @@ function calculateDailySummaryWithMergeNew11Column(sheet) {
                    .setFontFamily('Roboto')
                    .setHorizontalAlignment('center')
                    .setVerticalAlignment('middle')
-                   .setNumberFormat('"Rp"#,##0')
+                   .setNumberFormat('@STRING@')
+                   .setWrap(true)
                    .setBorder(true, true, true, true, false, false, '#d97706', SpreadsheetApp.BorderStyle.SOLID);
         
         Logger.log(`✅ Applied daily summary for ${dateString}: ${formattedTotal} (${rows.length} transaksi)`);
