@@ -3900,7 +3900,159 @@ function applyBulkFillToAll() {
         statusEl.textContent = `✅ Diterapkan ke ${availableKits.length} KIT — ${tipe} · Rp ${nominal.toLocaleString('id-ID')} · ${periodeStr}`;
         statusEl.style.color = '#34d399';
     }
+    renderQuickEditTable();
     if (window.stepperNav) window.stepperNav.updateNavigationButtons();
+}
+
+function renderQuickEditTable() {
+    const container = document.getElementById('quickEditTable');
+    if (!container) return;
+
+    const kits = availableKits.filter(k => k.isSelected);
+    if (kits.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const rows = kits.map(kit => {
+        const kitIdx = availableKits.indexOf(kit);
+        const tipeIcon = { Aktivasi: '🚀', Perpanjangan: '🔄', Migrasi: '🔀' }[kit.tipePembayaran] || '';
+        const nominalStr = kit.nominal ? 'Rp ' + kit.nominal.toLocaleString('id-ID') : '-';
+
+        return `
+            <tr id="qe-display-${kitIdx}" style="border-bottom:1px solid #334155;">
+                <td style="padding:8px 10px;color:#f1f5f9;font-size:13px;font-family:'Roboto Mono',monospace;">${kit.kitNumber}</td>
+                <td style="padding:8px 10px;color:#94a3b8;font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${kit.clientName || '-'}</td>
+                <td style="padding:8px 10px;color:#60a5fa;font-size:13px;">${tipeIcon} ${kit.tipePembayaran || '-'}</td>
+                <td style="padding:8px 10px;color:#34d399;font-size:13px;">${kit.periodeP || '-'}</td>
+                <td style="padding:8px 10px;color:#a78bfa;font-size:13px;font-weight:600;">${nominalStr}</td>
+                <td style="padding:8px 10px;text-align:center;">
+                    <button type="button" data-qe-open="${kitIdx}"
+                        style="padding:4px 10px;background:#1e3a8a;border:1px solid #3b82f6;border-radius:5px;color:#93c5fd;font-size:12px;cursor:pointer;">
+                        ✏️ Edit
+                    </button>
+                </td>
+            </tr>
+            <tr id="qe-edit-${kitIdx}" style="display:none;background:#0f172a;border-bottom:2px solid #3b82f6;">
+                <td colspan="6" style="padding:12px;">
+                    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+                        <div>
+                            <label style="display:block;color:#fef3c7;font-size:11px;font-weight:600;margin-bottom:4px;">💳 Tipe</label>
+                            <select id="qe-tipe-${kitIdx}"
+                                style="padding:8px 10px;background:#1e293b;border:1px solid #475569;border-radius:5px;color:#f1f5f9;font-size:13px;">
+                                <option value="Aktivasi" ${kit.tipePembayaran === 'Aktivasi' ? 'selected' : ''}>🚀 Aktivasi</option>
+                                <option value="Perpanjangan" ${kit.tipePembayaran === 'Perpanjangan' ? 'selected' : ''}>🔄 Perpanjangan</option>
+                                <option value="Migrasi" ${kit.tipePembayaran === 'Migrasi' ? 'selected' : ''}>🔀 Migrasi</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block;color:#d1fae5;font-size:11px;font-weight:600;margin-bottom:4px;">📅 Periode</label>
+                            <div style="display:flex;gap:6px;">
+                                <select id="qe-bulan-${kitIdx}"
+                                    style="padding:8px 8px;background:#1e293b;border:1px solid #475569;border-radius:5px;color:#f1f5f9;font-size:13px;">
+                                    ${generateBulanOptions(kit.periodeBulan)}
+                                </select>
+                                <select id="qe-tahun-${kitIdx}"
+                                    style="width:80px;padding:8px 6px;background:#1e293b;border:1px solid #475569;border-radius:5px;color:#f1f5f9;font-size:13px;">
+                                    ${generateTahunOptions(kit.periodeTahun)}
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="display:block;color:#fce7f3;font-size:11px;font-weight:600;margin-bottom:4px;">💰 Nominal</label>
+                            <input type="text" id="qe-nominal-${kitIdx}"
+                                value="${kit.nominal > 0 ? kit.nominal.toLocaleString('id-ID') : ''}"
+                                placeholder="contoh: 150000"
+                                style="padding:8px 10px;background:#1e293b;border:1px solid #475569;border-radius:5px;color:#f1f5f9;font-size:13px;font-family:'Roboto Mono',monospace;width:130px;">
+                        </div>
+                        <div style="display:flex;gap:6px;margin-top:17px;">
+                            <button type="button" data-qe-save="${kitIdx}"
+                                style="padding:8px 14px;background:linear-gradient(135deg,#065f46 0%,#10b981 100%);border:none;border-radius:5px;color:white;font-size:12px;font-weight:600;cursor:pointer;">
+                                💾 Simpan
+                            </button>
+                            <button type="button" data-qe-cancel="${kitIdx}"
+                                style="padding:8px 14px;background:#334155;border:none;border-radius:5px;color:#94a3b8;font-size:12px;cursor:pointer;">
+                                ✕ Batal
+                            </button>
+                        </div>
+                    </div>
+                </td>
+            </tr>`;
+    }).join('');
+
+    container.innerHTML = `
+        <div style="margin-top:12px;border:2px solid #334155;border-radius:10px;overflow:hidden;">
+            <div style="background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 100%);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:white;font-size:13px;font-weight:700;">✏️ Edit Individual KIT
+                    <span style="font-weight:400;color:#93c5fd;font-size:12px;"> — klik Edit pada baris yang ingin diubah</span>
+                </span>
+                <span style="color:#34d399;font-size:12px;font-weight:600;">${kits.length} KIT</span>
+            </div>
+            <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;background:#1e293b;">
+                    <thead>
+                        <tr style="background:#0f172a;border-bottom:1px solid #334155;">
+                            <th style="padding:8px 10px;color:#64748b;font-size:11px;font-weight:600;text-align:left;text-transform:uppercase;">KIT Number</th>
+                            <th style="padding:8px 10px;color:#64748b;font-size:11px;font-weight:600;text-align:left;text-transform:uppercase;">Client</th>
+                            <th style="padding:8px 10px;color:#64748b;font-size:11px;font-weight:600;text-align:left;text-transform:uppercase;">Tipe</th>
+                            <th style="padding:8px 10px;color:#64748b;font-size:11px;font-weight:600;text-align:left;text-transform:uppercase;">Periode</th>
+                            <th style="padding:8px 10px;color:#64748b;font-size:11px;font-weight:600;text-align:left;text-transform:uppercase;">Nominal</th>
+                            <th style="padding:8px 10px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="quickEditTableBody">${rows}</tbody>
+                </table>
+            </div>
+        </div>`;
+
+    container.querySelectorAll('[data-qe-open]').forEach(btn => {
+        btn.addEventListener('click', () => _qeOpen(parseInt(btn.dataset.qeOpen)));
+    });
+    container.querySelectorAll('[data-qe-save]').forEach(btn => {
+        btn.addEventListener('click', () => _qeSave(parseInt(btn.dataset.qeSave)));
+    });
+    container.querySelectorAll('[data-qe-cancel]').forEach(btn => {
+        btn.addEventListener('click', () => _qeClose(parseInt(btn.dataset.qeCancel)));
+    });
+}
+
+function _qeOpen(kitIdx) {
+    document.querySelectorAll('[id^="qe-edit-"]').forEach(r => r.style.display = 'none');
+    document.querySelectorAll('[id^="qe-display-"]').forEach(r => r.style.background = '');
+    const editRow = document.getElementById(`qe-edit-${kitIdx}`);
+    const displayRow = document.getElementById(`qe-display-${kitIdx}`);
+    if (editRow) editRow.style.display = '';
+    if (displayRow) displayRow.style.background = '#172554';
+}
+
+function _qeClose(kitIdx) {
+    const editRow = document.getElementById(`qe-edit-${kitIdx}`);
+    const displayRow = document.getElementById(`qe-display-${kitIdx}`);
+    if (editRow) editRow.style.display = 'none';
+    if (displayRow) displayRow.style.background = '';
+}
+
+function _qeSave(kitIdx) {
+    const tipe = document.getElementById(`qe-tipe-${kitIdx}`)?.value || '';
+    const nominal = parseInt((document.getElementById(`qe-nominal-${kitIdx}`)?.value || '').replace(/\D/g, '')) || 0;
+    const bulan = parseInt(document.getElementById(`qe-bulan-${kitIdx}`)?.value) || getCurrentPeriodeDefault().bulan;
+    const tahun = parseInt(document.getElementById(`qe-tahun-${kitIdx}`)?.value) || getCurrentPeriodeDefault().tahun;
+
+    if (!tipe || nominal < 1) return;
+
+    if (availableKits[kitIdx]) {
+        availableKits[kitIdx].tipePembayaran = tipe;
+        availableKits[kitIdx].nominal = nominal;
+        availableKits[kitIdx].periodeBulan = bulan;
+        availableKits[kitIdx].periodeTahun = tahun;
+        availableKits[kitIdx].periodeP = buildPeriodeString(bulan, tahun);
+    }
+
+    selectedKits = availableKits.filter(k => k.isSelected);
+    window.selectedKits = selectedKits;
+    updateStep3Summary();
+    if (window.stepperNav) window.stepperNav.updateNavigationButtons();
+    renderQuickEditTable();
 }
 
 function initBulkFillSection() {
