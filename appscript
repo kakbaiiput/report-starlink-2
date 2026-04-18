@@ -724,7 +724,9 @@ function applyFormattingWithMergeNew11Column(sheet) {
       sheet.getRange(2, 9, lastRow - 1, 1)
            .setFontFamily('Roboto')
            .setHorizontalAlignment('center')
-           .setNumberFormat('@STRING@');
+           .setNumberFormat('@STRING@')
+           .setFontWeight('bold')
+           .setFontColor('#065f46');
 
       // J: Nominal
       sheet.getRange(2, 10, lastRow - 1, 1)
@@ -885,7 +887,9 @@ function applyMasterFormattingToReportSheetNew11Column(sheet) {
       sheet.getRange(2, 9, lastRow - 1, 1)
            .setFontFamily('Roboto')
            .setHorizontalAlignment('center')
-           .setNumberFormat('@STRING@');
+           .setNumberFormat('@STRING@')
+           .setFontWeight('bold')
+           .setFontColor('#065f46');
 
       // J: Nominal
       sheet.getRange(2, 10, lastRow - 1, 1)
