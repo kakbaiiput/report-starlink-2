@@ -4014,6 +4014,17 @@ function renderQuickEditTable() {
     container.querySelectorAll('[data-qe-cancel]').forEach(btn => {
         btn.addEventListener('click', () => _qeClose(parseInt(btn.dataset.qeCancel)));
     });
+    container.querySelectorAll('[id^="qe-nominal-"]').forEach(input => {
+        const kitIdx = parseInt(input.id.replace('qe-nominal-', ''));
+        input.addEventListener('focus', function() {
+            const num = availableKits[kitIdx]?.nominal || 0;
+            this.value = num > 0 ? String(num) : '';
+        });
+        input.addEventListener('blur', function() {
+            const num = parseInt(this.value.replace(/\D/g, '')) || 0;
+            this.value = num > 0 ? num.toLocaleString('id-ID') : '';
+        });
+    });
 }
 
 function _qeOpen(kitIdx) {
