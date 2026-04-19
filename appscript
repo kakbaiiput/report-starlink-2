@@ -757,20 +757,19 @@ function applyFormattingWithMergeNew11Column(sheet) {
            .setBackground('#dcfdf7')
            .setFontColor('#047857');
 
-      // Alternating row colors (hindari kolom L yang di-merge)
+      // Alternating row colors: batch via RangeList (1 call per warna, bukan 1 call per baris)
+      var evenRows = [], oddRows = [];
       for (var row = 2; row <= lastRow; row++) {
-        var rowRange = sheet.getRange(row, 1, 1, 11); // A-K only
-        if (row % 2 === 0) {
-          rowRange.setBackground('#f8f9fa');
-        } else {
-          rowRange.setBackground('#ffffff');
-        }
-
-        // Override backgrounds for special columns
-        sheet.getRange(row, 3, 1, 1).setBackground('#f8fafc'); // Transaction ID
-        sheet.getRange(row, 6, 1, 1).setBackground('#f0f9ff'); // Serial Number
-        sheet.getRange(row, 11, 1, 1).setBackground('#dcfdf7'); // Jumlah Total
+        var n = 'A' + row + ':K' + row;
+        if (row % 2 === 0) evenRows.push(n); else oddRows.push(n);
       }
+      if (evenRows.length > 0) sheet.getRangeList(evenRows).setBackground('#f8f9fa');
+      if (oddRows.length > 0)  sheet.getRangeList(oddRows).setBackground('#ffffff');
+
+      // Override backgrounds untuk kolom khusus (satu panggilan per kolom, bukan per baris)
+      sheet.getRange(2, 3, lastRow - 1, 1).setBackground('#f8fafc');  // Transaction ID
+      sheet.getRange(2, 6, lastRow - 1, 1).setBackground('#f0f9ff');  // Serial Number
+      sheet.getRange(2, 11, lastRow - 1, 1).setBackground('#dcfdf7'); // Jumlah Total
     }
 
     // AUTO-RESIZE COLUMNS dengan minimum widths untuk 12 kolom
@@ -920,20 +919,19 @@ function applyMasterFormattingToReportSheetNew11Column(sheet) {
            .setBackground('#dcfdf7')
            .setFontColor('#047857');
 
-      // Alternating row colors
+      // Alternating row colors: batch via RangeList
+      var evenRows2 = [], oddRows2 = [];
       for (var row = 2; row <= lastRow; row++) {
-        var rowRange = sheet.getRange(row, 1, 1, Math.min(lastCol, 11));
-        if (row % 2 === 0) {
-          rowRange.setBackground('#f8f9fa');
-        } else {
-          rowRange.setBackground('#ffffff');
-        }
-
-        // Override backgrounds for special columns
-        sheet.getRange(row, 3, 1, 1).setBackground('#f8fafc'); // Transaction ID
-        sheet.getRange(row, 6, 1, 1).setBackground('#f0f9ff'); // Serial Number
-        sheet.getRange(row, 11, 1, 1).setBackground('#dcfdf7'); // Jumlah Total
+        var n = 'A' + row + ':K' + row;
+        if (row % 2 === 0) evenRows2.push(n); else oddRows2.push(n);
       }
+      if (evenRows2.length > 0) sheet.getRangeList(evenRows2).setBackground('#f8f9fa');
+      if (oddRows2.length > 0)  sheet.getRangeList(oddRows2).setBackground('#ffffff');
+
+      // Override backgrounds untuk kolom khusus
+      sheet.getRange(2, 3, lastRow - 1, 1).setBackground('#f8fafc');  // Transaction ID
+      sheet.getRange(2, 6, lastRow - 1, 1).setBackground('#f0f9ff');  // Serial Number
+      sheet.getRange(2, 11, lastRow - 1, 1).setBackground('#dcfdf7'); // Jumlah Total
     }
 
     // Auto-resize columns dengan minimum widths untuk 12 kolom
