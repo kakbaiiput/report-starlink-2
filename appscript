@@ -515,8 +515,21 @@ function sortAndOrganizeWithNew11ColumnStructure(sheet) {
     }
     
     Logger.log('✅ Sequential numbers updated');
-    
-    // ✅ NEW: Write sorted data back ke sheet (kolom A-J)
+
+    // Kolom I (Periode, index 8) bisa berubah menjadi Date object jika Google Sheets
+    // sempat mengkonversi string bulan ("April 2026") sebelumnya.
+    // Konversi kembali ke string, lalu paksa format plain text sebelum tulis ulang.
+    var BULAN_ID = ['Januari','Februari','Maret','April','Mei','Juni',
+                    'Juli','Agustus','September','Oktober','November','Desember'];
+    for (var i = 0; i < data.length; i++) {
+      if (data[i][8] instanceof Date) {
+        var d = data[i][8];
+        data[i][8] = BULAN_ID[d.getMonth()] + ' ' + d.getFullYear();
+      }
+    }
+    sheet.getRange(2, 9, lastRow - 1, 1).setNumberFormat('@STRING@');
+
+    // Write sorted data back ke sheet (kolom A-K)
     dataRange.setValues(data);
     
     // Calculate RUNNING TOTAL untuk kolom K
@@ -5482,7 +5495,9 @@ function submitPaymentDataMultiKit(formData) {
           kit.nominal                 // J: Nominal (per-KIT nominal)
         ];
 
-        // Insert this row
+        // Insert this row — format kolom I sebagai plain text SEBELUM setValues
+        // agar Google Sheets tidak auto-konversi "April 2026" menjadi tanggal
+        sheet.getRange(lastRow + 1, 9, 1, 1).setNumberFormat('@STRING@');
         sheet.getRange(lastRow + 1, 1, 1, rowData.length).setValues([rowData]);
         insertedRows.push(rowData);
 
@@ -5593,7 +5608,8 @@ function submitPaymentDataMultiKit(formData) {
         ];
       }
 
-      // Insert data (sampai kolom I saja, J dan K akan dihitung)
+      // Insert data — format kolom I sebagai plain text SEBELUM setValues
+      sheet.getRange(lastRow + 1, 9, 1, 1).setNumberFormat('@STRING@');
       sheet.getRange(lastRow + 1, 1, 1, rowData.length).setValues([rowData]);
       Logger.log('✅ Data inserted with NEW 11-column structure');
       Logger.log('Row data: ' + JSON.stringify(rowData));
