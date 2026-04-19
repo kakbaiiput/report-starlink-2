@@ -5463,6 +5463,13 @@ function submitPaymentDataMultiKit(formData) {
       var insertedTransactionIDs = [];
       var insertedRows = [];
 
+      // Set seluruh kolom I (Periode) sebagai plain text SEKALI di sini,
+      // sebelum loop, agar Google Sheets tidak auto-konversi "April 2026" ke tanggal.
+      var maxRows = sheet.getMaxRows();
+      if (maxRows > 1) {
+        sheet.getRange(2, 9, maxRows - 1, 1).setNumberFormat('@STRING@');
+      }
+
       // Loop each KIT and insert as separate entry
       for (var kitIndex = 0; kitIndex < formData.selectedKits.length; kitIndex++) {
         var kit = formData.selectedKits[kitIndex];
@@ -5495,9 +5502,7 @@ function submitPaymentDataMultiKit(formData) {
           kit.nominal                 // J: Nominal (per-KIT nominal)
         ];
 
-        // Insert this row — format kolom I sebagai plain text SEBELUM setValues
-        // agar Google Sheets tidak auto-konversi "April 2026" menjadi tanggal
-        sheet.getRange(lastRow + 1, 9, 1, 1).setNumberFormat('@STRING@');
+        // Insert row (format kolom I sudah di-set sebelum loop)
         sheet.getRange(lastRow + 1, 1, 1, rowData.length).setValues([rowData]);
         insertedRows.push(rowData);
 
@@ -5608,8 +5613,11 @@ function submitPaymentDataMultiKit(formData) {
         ];
       }
 
-      // Insert data — format kolom I sebagai plain text SEBELUM setValues
-      sheet.getRange(lastRow + 1, 9, 1, 1).setNumberFormat('@STRING@');
+      // Insert data (format kolom I sebagai plain text agar tidak jadi tanggal)
+      var legacyMaxRows = sheet.getMaxRows();
+      if (legacyMaxRows > 1) {
+        sheet.getRange(2, 9, legacyMaxRows - 1, 1).setNumberFormat('@STRING@');
+      }
       sheet.getRange(lastRow + 1, 1, 1, rowData.length).setValues([rowData]);
       Logger.log('✅ Data inserted with NEW 11-column structure');
       Logger.log('Row data: ' + JSON.stringify(rowData));
