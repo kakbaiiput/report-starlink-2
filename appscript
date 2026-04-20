@@ -505,11 +505,12 @@ function updateClientDataBatch(kitsWithTransactionIDs) {
       }
     });
 
-    // Write all row updates at once
-    Object.keys(rowUpdates).forEach(function(rowIdx) {
-      var row = parseInt(rowIdx);
-      clientSheet.getRange(row + 1, COLUMNS.TRANSACTION_ID + 1).setValue(rowUpdates[rowIdx]);
-    });
+    // Write all row updates — one setValue per unique row (reads already batched above)
+    var rowKeys = Object.keys(rowUpdates);
+    for (var ri = 0; ri < rowKeys.length; ri++) {
+      var row = parseInt(rowKeys[ri]);
+      clientSheet.getRange(row + 1, COLUMNS.TRANSACTION_ID + 1).setValue(rowUpdates[rowKeys[ri]]);
+    }
 
     Logger.log('✅ Batch client update: ' + updateResult.updated.length + ' updated, ' + updateResult.notFound.length + ' not found');
     return updateResult;
@@ -876,31 +877,10 @@ function applyFormattingWithMergeNew11Column(sheet) {
       sheet.getRange(2, 11, lastRow - 1, 1).setBackground('#dcfdf7'); // Jumlah Total
     }
 
-    // AUTO-RESIZE COLUMNS dengan minimum widths untuk 12 kolom
-    sheet.autoResizeColumns(1, lastCol);
-
-    var minWidths = {
-      1: 50,   // A: Nomor
-      2: 90,   // B: Tanggal
-      3: 140,  // C: Transaction ID
-      4: 120,  // D: Nama Client
-      5: 130,  // E: KIT Number
-      6: 130,  // F: Serial Number
-      7: 80,   // G: Paket
-      8: 90,   // H: Tipe Pembayaran
-      9: 80,   // I: Periode
-      10: 90,  // J: Nominal
-      11: 110, // K: Jumlah Total
-      12: 140  // L: Total Harian
-    };
-
+    // Set column widths directly — eliminates 12 getColumnWidth() reads (each forces server round-trip)
+    var colWidths = [50, 90, 140, 120, 130, 130, 80, 90, 80, 90, 110, 140];
     for (var col = 1; col <= lastCol; col++) {
-      var currentWidth = sheet.getColumnWidth(col);
-      var minWidth = minWidths[col] || 80;
-
-      if (currentWidth < minWidth) {
-        sheet.setColumnWidth(col, minWidth);
-      }
+      sheet.setColumnWidth(col, colWidths[col - 1] || 80);
     }
 
     Logger.log('✅ Complete formatting with 12-column structure applied');
@@ -5575,40 +5555,36 @@ function submitPaymentDataMultiKit(formData) {
         sheet.getRange(2, 9, maxRows - 1, 1).setNumberFormat('@STRING@');
       }
 
-      // Loop each KIT and insert as separate entry
+      // Build all rowData in memory first, then insert in ONE batch API call
+      lastRow = sheet.getLastRow(); // single getLastRow() call
+      var allRowData = [];
       for (var kitIndex = 0; kitIndex < formData.selectedKits.length; kitIndex++) {
         var kit = formData.selectedKits[kitIndex];
         var transactionID = insertedTransactionIDs[kitIndex];
+        var newRowNumber = lastRow + kitIndex; // row number for column A
 
-        Logger.log('Processing KIT ' + (kitIndex + 1) + '/' + formData.selectedKits.length + ': ' + kit.kitNumber);
-        Logger.log('  - Transaction ID: ' + transactionID);
-        Logger.log('  - Nominal: ' + kit.nominal);
-        Logger.log('  - Tipe Pembayaran: ' + (kit.tipePembayaran || '(EMPTY!)'));
-        Logger.log('  - Client Name: ' + (kit.clientName || formData.nama));
+        Logger.log('Building row ' + (kitIndex + 1) + '/' + formData.selectedKits.length + ': ' + kit.kitNumber + ' TxID=' + transactionID);
 
-        // Get current last row (updates after each insert)
-        lastRow = sheet.getLastRow();
-        var newRowNumber = lastRow;
-
-        // Create row data for this KIT
         var rowData = [
           newRowNumber,               // A: Nomor
           formattedDate,              // B: Tanggal
           transactionID,              // C: ID Transaksi
-          kit.clientName || formData.nama,  // D: Nama Client (🔧 FIX: Per-KIT client name)
+          kit.clientName || formData.nama,  // D: Nama Client
           kit.kitNumber,              // E: KIT Number
           kit.serialNumber || '',     // F: Serial Number
           kit.paket,                  // G: Paket
-          kit.tipePembayaran || '',   // H: Tipe Pembayaran (🆕 NOW PER-KIT)
+          kit.tipePembayaran || '',   // H: Tipe Pembayaran
           kit.periodeP || '',         // I: Periode
-          kit.nominal                 // J: Nominal (per-KIT nominal)
+          kit.nominal                 // J: Nominal
         ];
-
-        // Insert row (format kolom I sudah di-set sebelum loop)
-        sheet.getRange(lastRow + 1, 1, 1, rowData.length).setValues([rowData]);
+        allRowData.push(rowData);
         insertedRows.push(rowData);
+      }
 
-        Logger.log('✅ Inserted row ' + (kitIndex + 1) + ': ' + JSON.stringify(rowData));
+      // Single batch insert: all KITs in one setValues call
+      if (allRowData.length > 0) {
+        sheet.getRange(lastRow + 1, 1, allRowData.length, allRowData[0].length).setValues(allRowData);
+        Logger.log('✅ Batch inserted ' + allRowData.length + ' rows in single API call');
       }
 
       Logger.log('✅ All ' + formData.selectedKits.length + ' KITs inserted as separate entries');
