@@ -332,12 +332,6 @@ function validateStep3() {
     // Access from window scope (defined in app.js)
     const selectedKits = window.selectedKits || [];
 
-    console.log('🔍 Step 3 Validation - START:', {
-        currentStep: currentStep,
-        windowSelectedKitsExists: !!window.selectedKits,
-        selectedKitsCount: selectedKits.length
-    });
-
     // 🆕 NEW: Check if all selected KITs have valid nominal AND payment type
     let allKitsHaveValidNominal = selectedKits.length > 0 &&
                                   selectedKits.every(kit => kit.nominal && kit.nominal >= 1);
@@ -345,45 +339,16 @@ function validateStep3() {
     let allKitsHaveValidPaymentType = selectedKits.length > 0 &&
                                       selectedKits.every(kit => kit.tipePembayaran && kit.tipePembayaran !== '');
 
-    // Detailed per-KIT validation check
-    const kitValidationDetails = selectedKits.map(kit => ({
-        kitNumber: kit.kitNumber,
-        nominal: kit.nominal,
-        hasNominal: !!kit.nominal,
-        nominalValid: kit.nominal && kit.nominal >= 1,
-        nominalFormatted: kit.nominal ? `Rp ${kit.nominal.toLocaleString('id-ID')}` : 'NOT SET',
-        tipePembayaran: kit.tipePembayaran || 'NOT SET',
-        paymentTypeValid: kit.tipePembayaran && kit.tipePembayaran !== ''
-    }));
-
-    console.log('🔍 Step 3 Validation - KIT Details:', kitValidationDetails);
-
-    // Check individual validations
     const hasSelectedKits = selectedKits.length > 0;
     const allKitsHaveNominal = allKitsHaveValidNominal;
     const allKitsHavePaymentType = allKitsHaveValidPaymentType;
 
     const isValid = hasSelectedKits && allKitsHaveNominal && allKitsHavePaymentType;
 
-    console.log('🔍 Step 3 Validation - RESULT:', {
-        hasSelectedKits: hasSelectedKits,
-        selectedKitsCount: selectedKits.length,
-        allKitsHaveValidNominal: allKitsHaveValidNominal,
-        allKitsHaveValidPaymentType: allKitsHaveValidPaymentType,
-        isValid: isValid,
-        failureReason: !isValid ? (
-            !hasSelectedKits ? 'No KITs selected' :
-            !allKitsHaveNominal ? 'Some KITs have invalid nominal' :
-            !allKitsHavePaymentType ? 'Some KITs missing payment type' :
-            'Unknown'
-        ) : 'All valid'
-    });
-
     if (isValid) {
-        // No need to set global payment type anymore
         console.log('✅ Step 3 validation PASSED - All KITs have valid nominal and payment type');
     } else {
-        console.error('❌ Step 3 validation FAILED');
+        console.log('ℹ️ Step 3 not yet complete:', isValid ? '' : (!hasSelectedKits ? 'no KITs' : !allKitsHaveNominal ? 'missing nominal' : 'missing payment type'));
     }
 
     return isValid;

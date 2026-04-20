@@ -5545,8 +5545,28 @@ function submitPaymentDataMultiKit(formData) {
       var insertedTransactionIDs = [];
       var insertedRows = [];
 
-      // Generate all transaction IDs at once (1 sheet read instead of N)
-      insertedTransactionIDs = generateBatchTransactionIDs(tanggal, month, year, formData.selectedKits.length);
+      // Pre-generate all transaction IDs: reads sheet ONCE instead of N openById calls
+      // (Each generateTransactionID call was opening the report spreadsheet separately)
+      var datePrefix = day + '-' + monthStr + '-' + yearStr;
+      var nextIncrement = 1;
+      try {
+        var existingSheetData = sheet.getDataRange().getValues();
+        var oldPat = new RegExp('^SL\\/\\d{2}' + monthStr + yearStr + '\\/\\d{3}$');
+        var newPat = new RegExp('^SL\\/\\d{2}-' + monthStr + '-' + yearStr + '\\/\\d{3}$');
+        var maxInc = 0;
+        for (var ei = 1; ei < existingSheetData.length; ei++) {
+          var idStr = (existingSheetData[ei][2] || '').toString().trim();
+          if (oldPat.test(idStr) || newPat.test(idStr)) {
+            var idParts = idStr.split('/');
+            var idNum = idParts.length === 3 ? parseInt(idParts[2]) : NaN;
+            if (!isNaN(idNum) && idNum > maxInc) maxInc = idNum;
+          }
+        }
+        nextIncrement = maxInc + 1;
+        Logger.log('✅ Pre-read sheet for ID generation: next increment = ' + nextIncrement);
+      } catch (preReadError) {
+        Logger.log('⚠️ Pre-read fallback, will use increment 1: ' + preReadError.message);
+      }
 
       // Set seluruh kolom I (Periode) sebagai plain text SEKALI di sini,
       // sebelum loop, agar Google Sheets tidak auto-konversi "April 2026" ke tanggal.
@@ -5555,16 +5575,22 @@ function submitPaymentDataMultiKit(formData) {
         sheet.getRange(2, 9, maxRows - 1, 1).setNumberFormat('@STRING@');
       }
 
-      // Build all rowData in memory first, then insert in ONE batch API call
-      lastRow = sheet.getLastRow(); // single getLastRow() call
-      var allRowData = [];
+      // Loop each KIT and insert as separate entry
       for (var kitIndex = 0; kitIndex < formData.selectedKits.length; kitIndex++) {
         var kit = formData.selectedKits[kitIndex];
-        var transactionID = insertedTransactionIDs[kitIndex];
-        var newRowNumber = lastRow + kitIndex; // row number for column A
 
-        Logger.log('Building row ' + (kitIndex + 1) + '/' + formData.selectedKits.length + ': ' + kit.kitNumber + ' TxID=' + transactionID);
+        // Generate transaction ID from pre-read data — no extra openById needed
+        var transactionID = 'SL/' + datePrefix + '/' + (nextIncrement + kitIndex).toString().padStart(3, '0');
+        insertedTransactionIDs.push(transactionID);
 
+        Logger.log('Processing KIT ' + (kitIndex + 1) + '/' + formData.selectedKits.length + ': ' + kit.kitNumber);
+        Logger.log('  - Transaction ID: ' + transactionID);
+
+        // Get current last row (updates after each insert)
+        lastRow = sheet.getLastRow();
+        var newRowNumber = lastRow;
+
+        // Create row data for this KIT
         var rowData = [
           newRowNumber,               // A: Nomor
           formattedDate,              // B: Tanggal
@@ -5577,14 +5603,11 @@ function submitPaymentDataMultiKit(formData) {
           kit.periodeP || '',         // I: Periode
           kit.nominal                 // J: Nominal
         ];
-        allRowData.push(rowData);
-        insertedRows.push(rowData);
-      }
 
-      // Single batch insert: all KITs in one setValues call
-      if (allRowData.length > 0) {
-        sheet.getRange(lastRow + 1, 1, allRowData.length, allRowData[0].length).setValues(allRowData);
-        Logger.log('✅ Batch inserted ' + allRowData.length + ' rows in single API call');
+        sheet.getRange(lastRow + 1, 1, 1, rowData.length).setValues([rowData]);
+        insertedRows.push(rowData);
+
+        Logger.log('✅ Inserted row ' + (kitIndex + 1) + ': ' + kit.kitNumber);
       }
 
       Logger.log('✅ All ' + formData.selectedKits.length + ' KITs inserted as separate entries');
@@ -5596,11 +5619,15 @@ function submitPaymentDataMultiKit(formData) {
       // Apply filter based on transaction date
       applyDateFilterToReportSheet(sheet, tanggal);
 
-      // Update client data in a single batch (1 sheet read + 1 write per unique row)
-      var batchItems = formData.selectedKits.map(function(kit, idx) {
-        return { kit: kit, transactionID: insertedTransactionIDs[idx] };
-      });
-      var allUpdateResults = updateClientDataBatch(batchItems);
+      // Update client data with transaction IDs - each KIT gets its own transaction ID
+      var allUpdateResults = { updated: [], notFound: [] };
+      for (var updateIdx = 0; updateIdx < formData.selectedKits.length; updateIdx++) {
+        var updateKit = formData.selectedKits[updateIdx];
+        var updateTxID = insertedTransactionIDs[updateIdx];
+        var updateResult = updateClientDataWithTransactionID([updateKit], updateTxID);
+        allUpdateResults.updated = allUpdateResults.updated.concat(updateResult.updated);
+        allUpdateResults.notFound = allUpdateResults.notFound.concat(updateResult.notFound);
+      }
 
       Logger.log('✅ Client data updates completed: ' + allUpdateResults.updated.length + ' updated, ' + allUpdateResults.notFound.length + ' not found');
 
