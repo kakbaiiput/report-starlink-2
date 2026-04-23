@@ -1705,6 +1705,15 @@ function resetFormAfterSuccess() {
     if (kitList) kitList.innerHTML = '';
     const kitListStep3 = document.getElementById('kitListStep3');
     if (kitListStep3) kitListStep3.innerHTML = '';
+    // Clear stale validation results and fill state so next session starts clean
+    const bulkResultsList = document.getElementById('bulkResultsList');
+    if (bulkResultsList) bulkResultsList.innerHTML = '';
+    const bulkResultsSummary = document.getElementById('bulkResultsSummary');
+    if (bulkResultsSummary) bulkResultsSummary.innerHTML = '';
+    const quickEditTable = document.getElementById('quickEditTable');
+    if (quickEditTable) quickEditTable.innerHTML = '';
+    const bulkFillStatus = document.getElementById('bulkFillStatus');
+    if (bulkFillStatus) bulkFillStatus.textContent = '';
 
     // Reset payment type dropdown to empty state
     const paymentTypeSelected = document.getElementById('paymentTypeSelected');
