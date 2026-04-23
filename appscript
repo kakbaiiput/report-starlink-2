@@ -877,10 +877,27 @@ function applyFormattingWithMergeNew11Column(sheet) {
       sheet.getRange(2, 11, lastRow - 1, 1).setBackground('#dcfdf7'); // Jumlah Total
     }
 
-    // Set column widths directly — eliminates 12 getColumnWidth() reads (each forces server round-trip)
-    var colWidths = [50, 90, 140, 120, 130, 130, 80, 90, 80, 90, 110, 140];
-    for (var col = 1; col <= lastCol; col++) {
-      sheet.setColumnWidth(col, colWidths[col - 1] || 80);
+    // Auto-resize to fit data content, then enforce minimum widths per column
+    sheet.autoResizeColumns(1, lastCol);
+    var minWidths = {
+      1: 50,   // A: Nomor
+      2: 90,   // B: Tanggal
+      3: 140,  // C: Transaction ID
+      4: 120,  // D: Nama Client
+      5: 130,  // E: KIT Number
+      6: 130,  // F: Serial Number
+      7: 80,   // G: Paket
+      8: 90,   // H: Tipe Pembayaran
+      9: 80,   // I: Periode
+      10: 90,  // J: Nominal
+      11: 110, // K: Jumlah Total
+      12: 140  // L: Total Harian
+    };
+    for (var col = 1; col <= Math.min(lastCol, 12); col++) {
+      var currentWidth = sheet.getColumnWidth(col);
+      if (currentWidth < (minWidths[col] || 80)) {
+        sheet.setColumnWidth(col, minWidths[col] || 80);
+      }
     }
 
     Logger.log('✅ Complete formatting with 12-column structure applied');
